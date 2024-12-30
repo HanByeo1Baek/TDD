@@ -1,6 +1,8 @@
 package com.green.greengram.feed.like;
 
+import com.green.greengram.TestUtils;
 import com.green.greengram.feed.like.model.FeedLikeReq;
+import com.green.greengram.feed.like.model.FeedLikeVo;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +13,8 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @ActiveProfiles("test") //yaml 적용되는 파일 선택 (application-test.yml)
@@ -19,11 +23,14 @@ import static org.junit.jupiter.api.Assertions.*;
 //테스트는 기본적으로 메모리 데이터베이스 (H2)를 사용해서 하는데 메모리 데이터베이스로 교체하지 않겠다.
 //즉, 우리가 원래 쓰는 데이터베이스로 테스트를 진행하겠다.
 
-@TestInstance(TestInstance.Lifecycle.PER_METHOD)
+//@TestInstance(TestInstance.Lifecycle.PER_CLASS) //테스트 객체를 딱 하나만 만든다.
 class FeedLikeMapperTest {
 
     @Autowired //TODO: 스프링 컨테이너가 DI해주는게 맞는지 확인
     FeedLikeMapper feedLikeMapper; //필드 주입 방식의 DI가 된다.
+
+    @Autowired
+    FeedLikeTestMapper feedLikeTestMapper;
 
     static final long FEED_ID_1 = 1L;
     static final long FEED_ID_5 = 5L;
@@ -42,7 +49,7 @@ class FeedLikeMapperTest {
      */
     // @BeforeAll - 테스트 메소드 실행되기 최초 딱 한번 실행이 되는 메소드
     // 테스트 메소드 마다 테스트 객체가 만들어지면 BeforeAll 메소드는 static 메소드여야 한다.
-    // 한 테스트 객체가 만들어지면 non-static 메소드여야 한다.
+    // 한 테스트 객체가 만들어지면 non-static 메소드일 수 있다.
     @BeforeAll
     static void initData(){
         existedData.setFeedId(FEED_ID_1);
@@ -65,10 +72,22 @@ class FeedLikeMapperTest {
     @Test
     void insFeedLikeNormal(){
         //when
+        List<FeedLikeVo> actualFeedLikeListBefore = feedLikeTestMapper.selFeedLikeAll(); //insert 전 튜플 수
+        FeedLikeVo actualFeedLikeVoBefore = feedLikeTestMapper.selFeedLikeByFeedIdAndUserId(notExistedData); //insert 전 WHERE 절에 PK로 데이터를 가져옴
         int actualAffectedRows = feedLikeMapper.insFeedLike(notExistedData);
+        FeedLikeVo actualFeedLikeVoAfter = feedLikeTestMapper.selFeedLikeByFeedIdAndUserId(notExistedData); //insert 후 WHERE 절에 PK로 데이터를 가져옴
+        List<FeedLikeVo> actualFeedLikeListAfter = feedLikeTestMapper.selFeedLikeAll(); //insert 후 튜플 수
 
         //then
-        assertEquals(1, actualAffectedRows);
+        assertAll(
+                  () -> TestUtils.assertCurrentTimestamp(actualFeedLikeVoAfter.getCreatedAt())
+                , () -> assertEquals(actualFeedLikeListBefore.size() + 1, actualFeedLikeListAfter.size())
+                , () -> assertNull(actualFeedLikeVoBefore) //내가 insert 하려고 하는 데이터가 없었는지 단언
+                , () -> assertNotNull(actualFeedLikeVoAfter) //실제 insert 가 내가 원하는 데이터로 되었는지 단언
+                , () -> assertEquals(1, actualAffectedRows)
+                , () -> assertEquals(notExistedData.getFeedId(), actualFeedLikeVoAfter.getFeedId()) //내가 원하는 데이터로 insert 되었는지 더블 체크
+                , () -> assertEquals(notExistedData.getUserId(), actualFeedLikeVoAfter.getUserId()) //내가 원하는 데이터로 insert 되었는지 더블 체크
+        );
     }
 
     @Test
@@ -80,7 +99,14 @@ class FeedLikeMapperTest {
 
     @Test
     void delFeedLikeNormal(){
+        FeedLikeVo actualFeedLikeVoBefore = feedLikeTestMapper.selFeedLikeByFeedIdAndUserId(existedData);
         int actualAffectedRows = feedLikeMapper.delFeedLike(existedData);
-        assertEquals(1, actualAffectedRows);
+        FeedLikeVo actualFeedLikeVoAfter = feedLikeTestMapper.selFeedLikeByFeedIdAndUserId(existedData);
+
+        assertAll(
+                  () -> assertNotNull(actualFeedLikeVoBefore)
+                , () -> assertNull(actualFeedLikeVoAfter)
+                , () -> assertEquals(1, actualAffectedRows)
+        );
     }
 }
