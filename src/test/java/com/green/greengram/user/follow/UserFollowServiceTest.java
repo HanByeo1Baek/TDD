@@ -28,24 +28,23 @@ class UserFollowServiceTest {
     static final long fromUserId3 = 3L;
     static final long toUserId4 = 4L;
 
-    static final UserFollowReq userFollowReq1_2 = new UserFollowReq(toUserId2);
-    static final UserFollowReq userFollowReq3_4 = new UserFollowReq(toUserId4);
-
     @Test
     @DisplayName("postUserFollow")
     void postUserFollow() {
         //given
         //authenticationFacade Mock 객체의 getSignedUserId()메소드를 호출하면 willReturn값이 리턴이 되게끔 세팅
-        final int EXPECTED_RESULT = 1;
-        given(authenticationFacade.getSignedUserId()).willReturn(fromUserId1);
+        final int EXPECTED_RESULT = 13;
+        final long EXPECTED_FROM_USER_ID = fromUserId3;
+        final long EXPECTED_TO_USER_ID = toUserId4;
+        given(authenticationFacade.getSignedUserId()).willReturn(EXPECTED_FROM_USER_ID);
 
-        UserFollowReq givenParam1_2 = new UserFollowReq(toUserId2);
-        givenParam1_2.setFromUserId(fromUserId1);
-        given(userFollowMapper.insUserFollow(givenParam1_2)).willReturn(EXPECTED_RESULT);
+        UserFollowReq givenParam = new UserFollowReq(EXPECTED_TO_USER_ID);
+        givenParam.setFromUserId(EXPECTED_FROM_USER_ID);
+        given(userFollowMapper.delUserFollow(givenParam)).willReturn(EXPECTED_RESULT);
 
         //when
-        UserFollowReq actualParam0_2 = new UserFollowReq(toUserId2);
-        int actualResult = userFollowService.postUserFollow(actualParam0_2);
+        UserFollowReq actualParam = new UserFollowReq(EXPECTED_TO_USER_ID);
+        int actualResult = userFollowService.deleteUserFollow(actualParam);
 
         //then
         assertEquals(EXPECTED_RESULT, actualResult);
